@@ -3,8 +3,16 @@ from collections import defaultdict
 import requests as rq
 import json
 import re
+import pandas as pd
+
+def savetojson(data):
+    with open('anime_ratings','w+') as fp:
+	json.dump(data,fp)
 
 def getLines(showCount=0):
+    shows = defaultdict(list)
+    showName = []
+    href =[]
     loopCount = showCount/50
     for i in range(0,loopCount):
         flag = True
@@ -18,19 +26,24 @@ def getLines(showCount=0):
                 print 'retrying loop'
             soup = bsoup(page.content,'html.parser')
             table = soup.find_all('tr',class_="ranking-list")
-            shows = defaultdict(list)
-            showName = []
-            href = []
+            #shows = defaultdict(list)
+            #showName = []
             for element in table:
                 show = element.find('div',class_="di-ib clearfix")
                 show.a['href']
                 s = (show.a['href']).encode('utf-8').strip().split('/')[-1].replace('_',' ')
                 href.append(show.a['href'])    
                 showName.append(s)
-            for index, name in enumerate(href):
-                genre = {"Genre":""}
-                print index, showName[index], len(href)
-                page = rq.get(href[index])
+		print s
+            for index, name in enumerate((href)):
+                index = index + i * 50
+		genre = {"Genre":""}
+		try:
+		   print index, showName[index], len(href)
+		   page = rq.get(href[index])
+		except IndexError:
+		   print 'index is out of bounds'
+		   pass
                 soup = bsoup(page.content,'html.parser')
                 table = soup.find_all('div',class_='js-scrollfix-bottom')
                 try:
@@ -39,18 +52,22 @@ def getLines(showCount=0):
                 except IndexError:
                     print "uh oh"
                     pass
-
-                shows[showName[index]] = [[x.get_text() for x in genres], score]
+		try:
+                    shows[showName[index]] = [[x.get_text() for x in genres], score]
+		except IndexError:
+		    print 'index out of bounds :('
+		    break
             if len(shows) == 0:
+		print "get request messed up, restarting page"
                 flag = True
-            print shows
-            print shows['Kimi no Na wa']
-            with open('anime_ratings.json','a+') as fp:
-                json.dump(shows,fp)
+	    print i, loopCount, showCount
+            #with open('anime_ratings'+str(i)+'.json','w+') as fp:
+                #json.dump(shows,fp)
+    savetojson(shows)
 
 def main():
     while True:
-        numShows = input('Enter number of shoes as a multiple of 50')
+        numShows = input('Enter number of shoes as a multiple of 50 :: ')
         if numShows%50 is 0:
             break
         else:
